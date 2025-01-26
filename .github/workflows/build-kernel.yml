@@ -108,7 +108,7 @@ jobs:
         echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "SUSFS_KERNEL_VERSION=4.9" >> $GITHUB_ENV
+        echo "SUSFS_KERNEL_VERSION=4.19" >> $GITHUB_ENV
         // SUSFS_KERNEL_VERSION found in kernel/Makefile
 
     - name: Setup SUSFS For KernelSU
@@ -117,13 +117,13 @@ jobs:
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         git clone --recursive ${{ env.SUSFS_SOURCE }} -b ${{ env.SUSFS_SOURCE_BRANCH }} susfs4ksu --depth=1
         cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch KernelSU/
-        cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-$SUSFS_KERNEL_VERSION.patch ./
-        cp susfs4ksu/kernel_patches/fs/* fs/
-        cp susfs4ksu/kernel_patches/include/linux/* include/linux/
+        cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch ./
+        cp susfs4ksu/kernel_patches/fs/susfd.c fs/
+        cp susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/
         cd KernelSU
         patch -p1 < 10_enable_susfs_for_ksu.patch
         cd ../
-        patch -p1 < 50_add_susfs_in_kernel-$SUSFS_KERNEL_VERSION.patch
+        patch -p1 < 50_add_susfs_in_kernel-4.19.patch
         
     - name: Download Clang-aosp
       if: env.USE_CUSTOM_CLANG != 'true'
