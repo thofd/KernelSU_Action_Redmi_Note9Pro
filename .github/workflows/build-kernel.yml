@@ -264,7 +264,7 @@ jobs:
         echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         echo "SUSFS_KERNEL_VERSION=4.19" >> $GITHUB_ENV
-        // SUSFS_KERNEL_VERSION found in kernel/Makefile
+        # SUSFS_KERNEL_VERSION found in kernel/Makefile
 
     - name: Setup SUSFS For KernelSU
       if: env.ENABLE_SUSFS == 'true'
