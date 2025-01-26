@@ -91,40 +91,6 @@ jobs:
         sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
         mkdir -p $GITHUB_WORKSPACE/kernel_workspace
         
-    - name: Setup SUSFS For KernelSU Environment&Kernel Config
-      if : env.ENABLE_SUSFS == 'true'
-      run: |  
-        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        echo "CONFIG_KSU_SUSFS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
-        echo "SUSFS_KERNEL_VERSION=4.19" >> $GITHUB_ENV
-        // SUSFS_KERNEL_VERSION found in kernel/Makefile
-
-    - name: Setup SUSFS For KernelSU
-      if: env.ENABLE_SUSFS == 'true'
-      run: |
-        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        git clone --recursive ${{ env.SUSFS_SOURCE }} -b ${{ env.SUSFS_SOURCE_BRANCH }} susfs4ksu --depth=1
-        cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch KernelSU/
-        cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch ./
-        cp susfs4ksu/kernel_patches/fs/susfd.c fs/
-        cp susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/
-        cd KernelSU
-        patch -p1 < 10_enable_susfs_for_ksu.patch
-        cd ../
-        patch -p1 < 50_add_susfs_in_kernel-4.19.patch
-        
     - name: Download Clang-aosp
       if: env.USE_CUSTOM_CLANG != 'true'
       run: |
@@ -271,7 +237,47 @@ jobs:
         if [ ${{ env.DISABLE_CC_WERROR }} = true ]; then
             echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         fi
+    - name: Setup build kernel environment
+      run: |
+        echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "DEVICE=$(echo ${{ env.KERNEL_CONFIG }} | sed 's!vendor/!!;s/_defconfig//;s/_user//;s/-perf//')" >> $GITHUB_ENV
+        sudo apt-get update
+        sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
+        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
+        
+    - name: Setup SUSFS For KernelSU Environment&Kernel Config
+      if : env.ENABLE_SUSFS == 'true'
+      run: |  
+        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        echo "CONFIG_KSU_SUSFS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"  >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
+        echo "SUSFS_KERNEL_VERSION=4.19" >> $GITHUB_ENV
+        // SUSFS_KERNEL_VERSION found in kernel/Makefile
 
+    - name: Setup SUSFS For KernelSU
+      if: env.ENABLE_SUSFS == 'true'
+      run: |
+        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        git clone --recursive ${{ env.SUSFS_SOURCE }} -b ${{ env.SUSFS_SOURCE_BRANCH }} susfs4ksu --depth=1
+        cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch KernelSU/
+        cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch ./
+        cp susfs4ksu/kernel_patches/fs/susfd.c fs/
+        cp susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/
+        cd KernelSU
+        patch -p1 < 10_enable_susfs_for_ksu.patch
+        cd ../
+        patch -p1 < 50_add_susfs_in_kernel-4.19.patch
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
       uses: hendrikmuhs/ccache-action@v1.2
