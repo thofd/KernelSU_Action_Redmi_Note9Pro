@@ -55,6 +55,7 @@ jobs:
             SOURCE_BOOT_IMAGE
             KSU_EXPECTED_SIZE
             KSU_EXPECTED_HASH
+            ENABLE_SUSFS
             REMOVE_UNUSED_PACKAGES
         )
 
