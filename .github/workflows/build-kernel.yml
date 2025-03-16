@@ -39,6 +39,8 @@ jobs:
             CUSTOM_GCC_32_SOURCE
             CUSTOM_GCC_32_BRANCH
             CUSTOM_GCC_32_BIN
+            ENABLE_KERNELSU_next
+            KERNELSU_next_TAG
             ENABLE_KERNELSU
             KERNELSU_TAG
             ADD_KPROBES_CONFIG
@@ -46,6 +48,7 @@ jobs:
             ADD_OVERLAYFS_CONFIG
             DISABLE_CC_WERROR
             APPLY_KSU_PATCH
+            APPLY_KSU_next_PATCH
             USE_CUSTOM_ANYKERNEL3
             CUSTOM_ANYKERNEL3_SOURCE
             CUSTOM_ANYKERNEL3_BRANCH
@@ -53,6 +56,8 @@ jobs:
             NEED_DTBO
             BUILD_BOOT_IMG
             SOURCE_BOOT_IMAGE
+            KSU_next_EXPECTED_SIZE
+            KSU_next_EXPECTED_HASH
             KSU_EXPECTED_SIZE
             KSU_EXPECTED_HASH
             ENABLE_SUSFS
@@ -211,7 +216,7 @@ jobs:
     - name: Setup Configuration for Kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        if [ ${{ env.APPLY_KSU_PATCH }} = true ]; then
+        if [ ${{ env.APPLY_KSU_next_PATCH }} = true ]; then
             bash $GITHUB_WORKSPACE/patches/patches.sh
             if grep -q "CONFIG_KSU" arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}; then
                 sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
@@ -220,7 +225,7 @@ jobs:
                 echo "CONFIG_KSU=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
             fi
         fi
-        if [ ${{ env.ADD_KPROBES_CONFIG }} = true -a ${{ env.APPLY_KSU_PATCH }} != true ]; then
+        if [ ${{ env.ADD_KPROBES_CONFIG }} = true -a ${{ env.APPLY_KSU_next_PATCH }} != true ]; then
             echo "CONFIG_MODULES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
             echo "CONFIG_KPROBES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
             echo "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
