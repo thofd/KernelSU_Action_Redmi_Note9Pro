@@ -1,84 +1,48 @@
-name: Build SukiSU-Ultra Kernel for Gauguin
-
+name: Build Kernel note9 pro
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Compile Kernel
+    name: 编译 Kernel
     runs-on: ubuntu-22.04
-
     steps:
+      - uses: actions/checkout@v3
 
-    - name: ✅ 初始化工作目录
-      run: |
-        mkdir kernel clang anykernel
+      # 安装必要工具（可选，根据需要添加 apt install）
+      - name: Setup Build Env
+        run: sudo apt-get update && sudo apt-get install -y wget unzip curl git clang gcc aarch64-linux-gnu-*
 
-    - name: 🧬 克隆 gauguin 官方内核（Android 12）
-      run: |
-        git clone --depth=1 https://github.com/thofd/neko_kernel_xiaomi_gauguin -b main kernel
+      # 拉取内核源码
+      - name: Clone Kernel Source
+        run: git clone --depth=1 https://github.com/thofd/neko_kernel_xiaomi_gauguin.git
 
-    - name: 🧰 克隆 Proton Clang
-      run: |
-        git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+      - name: Apply SukiSU-Ultra Patches
+        working-directory: neko_kernel_xiaomi_gauguin
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
-    - name: 🌟 集成 SukiSU-Ultra 模块
-      run: |
-        cd kernel
-        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+      # 编译内核
+      - name: Build Kernel
+        working-directory: neko_kernel_xiaomi_gauguin
+        run: |
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-android-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          make vendor/gauguin_user_defconfig
+          make -j$(nproc --all) CC=clang
 
-    - name: ⚙️ 设置构建变量
-      run: |
-        echo "KERNEL_DIR=$GITHUB_WORKSPACE/kernel" >> $GITHUB_ENV
-        echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_ENV
-        echo "ANYKERNEL_DIR=$GITHUB_WORKSPACE/anykernel" >> $GITHUB_ENV
+      # 打包 ZIP
+      - name: Package ZIP
+        run: |
+          mkdir out_zip && cp neko_kernel_xiaomi_gauguin/arch/arm64/boot/Image out_zip/
+          cd out_zip && zip -r ../gauguin-kernel.zip Image
 
-    - name: 📦 安装编译依赖
-      run: |
-        sudo apt update
-        sudo apt install -y bc bison build-essential flex libssl-dev \
-          libelf-dev libncurses5-dev curl ccache python3 unzip zip wget
-
-    - name: 🧪 配置并编译内核
-      run: |
-        cd $KERNEL_DIR
-        export PATH=$CLANG_PATH:$PATH
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CC=clang
-
-        make O=out gauguin_defconfig
-
-        # 强制启用 SukiSU/SUSFS/KPM
-        sed -i '/CONFIG_SUKISU/d' out/.config
-        sed -i '/CONFIG_SUSFS/d' out/.config
-        sed -i '/CONFIG_KPM/d' out/.config
-        echo "CONFIG_SUKISU=y" >> out/.config
-        echo "CONFIG_SUSFS=y" >> out/.config
-        echo "CONFIG_KPM=y" >> out/.config
-
-        make O=out CC=clang -j$(nproc)
-
-        # 复制裸 Image 文件
-        cp out/arch/arm64/boot/Image $GITHUB_WORKSPACE/Image
-
-    - name: 🛠️ 克隆并准备 AnyKernel3
-      run: |
-        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 $ANYKERNEL_DIR
-        cp $GITHUB_WORKSPACE/Image $ANYKERNEL_DIR/Image
-        
-        # 用我们自己改过的 anykernel.sh 覆盖
-        curl -LSs https://yourlink.com/your-anykernel.sh -o $ANYKERNEL_DIR/anykernel.sh
-        chmod +x $ANYKERNEL_DIR/anykernel.sh
-
-    - name: 📦 打包 zip
-      run: |
-        cd $ANYKERNEL_DIR
-        zip -r9 SukiSU_Gauguin.zip *
-
-    - name: 🚀 上传编译结果
-      uses: actions/upload-artifact@v3
-      with:
-        name: SukiSU_Gauguin
-        path: anykernel/SukiSU_Gauguin.zip
+      # 上传构建产物
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: gauguin-kernel
+          path: |
+            gauguin-kernel.zip
+            neko_kernel_xiaomi_gauguin/arch/arm64/boot/Image
