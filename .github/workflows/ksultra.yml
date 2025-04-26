@@ -1,69 +1,84 @@
-name: 编译 gauguin SukiSU-Ultra 内核
+name: Build SukiSU-Ultra Kernel for Gauguin
 
 on:
-  push:
-  workflow_dispatch:   # 允许手动触发
-  
+  workflow_dispatch:
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Compile Kernel
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: 🧩 初始化源码
-      uses: actions/checkout@v3
 
-    - name: 🛠️ 安装依赖
+    - name: ✅ 初始化工作目录
       run: |
-        sudo apt-get update
-        sudo apt-get install -y git wget curl bc build-essential flex bison \
-          libssl-dev libncurses5-dev libelf-dev ccache
+        mkdir kernel clang anykernel
 
-    - name: 💥 拉取 AOSP Clang 工具链
+    - name: 🧬 克隆 gauguin 官方内核（Android 11）
       run: |
-        mkdir clang && cd clang
-        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz
-        tar -xf clang-r450784d.tar.gz
-        echo "CLANG_PATH=$(pwd)" >> $GITHUB_ENV
+        git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b gauguin-r-oss kernel
 
-    - name: 💡 设置环境变量
+    - name: 🧰 克隆 Proton Clang
       run: |
-        echo "KERNEL_DIR=${{ github.workspace }}" >> $GITHUB_ENV
-        echo "ARCH=arm64" >> $GITHUB_ENV
-        echo "SUBARCH=arm64" >> $GITHUB_ENV
-        echo "DEFCONFIG=vendor/gauguin_user_defconfig" >> $GITHUB_ENV
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
 
-    - name: 🌐 拉取 SUSFS & KPM 模块
+    - name: 🌟 集成 SukiSU-Ultra 模块
       run: |
-        cd $KERNEL_DIR
-        git clone https://github.com/tiann/susfs susfs
-        git clone https://github.com/tiann/kpm kpm
-        # 将源码手动集成到 kernel 中（假设你知道如何 merge 或 patch）
-        # 你可以添加自己的 patch apply 脚本或用 patch 命令
+        cd kernel
+        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
-    - name: 🔧 配置并编译内核
+    - name: ⚙️ 设置构建变量
       run: |
-        cd $KERNEL_DIR
-        export PATH=$CLANG_PATH/bin:$PATH
-        make O=out $DEFCONFIG
-        make -j$(nproc) O=out \
-          ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \
-          CC=clang \
-          CLANG_TRIPLE=aarch64-linux-gnu- \
-          LLVM=1
+        echo "KERNEL_DIR=$GITHUB_WORKSPACE/kernel" >> $GITHUB_ENV
+        echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_ENV
+        echo "ANYKERNEL_DIR=$GITHUB_WORKSPACE/anykernel" >> $GITHUB_ENV
 
-    - name: 📦 准备 AnyKernel3 打包
+    - name: 📦 安装编译依赖
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison build-essential flex libssl-dev \
+          libelf-dev libncurses5-dev curl ccache python3 unzip zip wget
+
+    - name: 🧪 配置并编译内核
       run: |
         cd $KERNEL_DIR
-        git clone https://github.com/osm0sis/AnyKernel3.git
-        cp out/arch/arm64/boot/Image AnyKernel3/
-        cd AnyKernel3
-        zip -r9 ../gauguin-SukiSU.zip *
+        export PATH=$CLANG_PATH:$PATH
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang
 
-    - name: 📤 上传产物
-      uses: actions/upload-artifact@v4
+        make O=out gauguin_defconfig
+
+        # 强制启用 SukiSU/SUSFS/KPM
+        sed -i '/CONFIG_SUKISU/d' out/.config
+        sed -i '/CONFIG_SUSFS/d' out/.config
+        sed -i '/CONFIG_KPM/d' out/.config
+        echo "CONFIG_SUKISU=y" >> out/.config
+        echo "CONFIG_SUSFS=y" >> out/.config
+        echo "CONFIG_KPM=y" >> out/.config
+
+        make O=out CC=clang -j$(nproc)
+
+        # 复制裸 Image 文件
+        cp out/arch/arm64/boot/Image $GITHUB_WORKSPACE/Image
+
+    - name: 🛠️ 克隆并准备 AnyKernel3
+      run: |
+        git clone --depth=1 https://github.com/osm0sis/AnyKernel3 $ANYKERNEL_DIR
+        cp $GITHUB_WORKSPACE/Image $ANYKERNEL_DIR/Image
+        
+        # 用我们自己改过的 anykernel.sh 覆盖
+        curl -LSs https://yourlink.com/your-anykernel.sh -o $ANYKERNEL_DIR/anykernel.sh
+        chmod +x $ANYKERNEL_DIR/anykernel.sh
+
+    - name: 📦 打包 zip
+      run: |
+        cd $ANYKERNEL_DIR
+        zip -r9 SukiSU_Gauguin.zip *
+
+    - name: 🚀 上传编译结果
+      uses: actions/upload-artifact@v3
       with:
-        name: Kernel-Artifacts
-        path: |
-          out/arch/arm64/boot/Image
-          gauguin-SukiSU.zip
+        name: SukiSU_Gauguin
+        path: anykernel/SukiSU_Gauguin.zip
