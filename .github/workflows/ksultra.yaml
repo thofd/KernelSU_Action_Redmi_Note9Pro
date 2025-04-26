@@ -1,0 +1,68 @@
+name: 编译 gauguin SukiSU-Ultra 内核
+
+on:
+  push:
+   # branches:
+   #   - main        # 当代码推送到主分支时触发
+  workflow_dispatch:   # 允许手动触发
+
+jobs:
+  build:
+    name: 编译 gauguin 内核
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v3
+
+      - name: 缓存 Neutron Clang 工具链
+        # 使用 actions/cache 缓存下载的 Clang 工具链目录，加速后续构建&#8203;:contentReference[oaicite:7]{index=7}&#8203;:contentReference[oaicite:8]{index=8}。
+        uses: actions/cache@v3
+        with:
+          path: $HOME/toolchains/neutron-clang
+          key: neutron-clang-${{ runner.os }}-v1
+
+      - name: 下载并安装 Neutron Clang
+        # 如果需要，可以改用 Proton Clang。以下示例使用 Neutron Clang，通过 AntMan 脚本拉取最新构建。
+        run: |
+          mkdir -p $HOME/toolchains/neutron-clang
+          cd $HOME/toolchains/neutron-clang
+          bash <(curl -s https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman) -S
+
+      - name: 设置编译环境变量
+        # 配置 PATH 和交叉编译工具。按照 Neutron/Proton Clang 文档，需要设置 CC 和 CROSS_COMPILE&#8203;:contentReference[oaicite:9]{index=9}&#8203;:contentReference[oaicite:10]{index=10}。
+        run: |
+          echo "export PATH=$HOME/toolchains/neutron-clang/bin:\$PATH" >> $GITHUB_ENV
+          echo "export CC=clang" >> $GITHUB_ENV
+          echo "export CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-" >> $GITHUB_ENV
+          echo "export ARCH=arm64" >> $GITHUB_ENV
+
+      - name: 编译内核 (suki_defconfig)
+        # 执行 suki_defconfig 并编译内核。结果会输出到 arch/arm64/boot/Image。
+        run: |
+          cd ${{ github.workspace }}
+          make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} suki_defconfig
+          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} CC=clang
+
+      - name: 压缩内核 Image
+        # 将生成的裸内核镜像压缩为 Image.gz 方便打包。
+        run: |
+          gzip -f arch/arm64/boot/Image
+
+      - name: 准备 AnyKernel3 并打包 ZIP
+        # 使用 AnyKernel3 模板将 Image.gz 打包为可刷机 ZIP&#8203;:contentReference[oaicite:11]{index=11}。
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3.git anykernel
+          cp arch/arm64/boot/Image.gz anykernel/
+          cd anykernel
+          zip -r ../suki-gauguin.zip .
+
+      - name: 上传编译产物
+        # 上传裸 Image 文件和 ZIP 包到 GitHub Artifact&#8203;:contentReference[oaicite:12]{index=12}。
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-artifacts
+          path: |
+            arch/arm64/boot/Image
+            suki-gauguin.zip
