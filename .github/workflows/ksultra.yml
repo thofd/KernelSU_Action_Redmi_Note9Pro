@@ -14,9 +14,9 @@ jobs:
       run: |
         mkdir kernel clang anykernel
 
-    - name: 🧬 克隆 gauguin 官方内核（Android 11）
+    - name: 🧬 克隆 gauguin 官方内核（Android 12）
       run: |
-        git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource -b gauguin-r-oss kernel
+        git clone --depth=1 https://github.com/thofd/neko_kernel_xiaomi_gauguin -b main kernel
 
     - name: 🧰 克隆 Proton Clang
       run: |
