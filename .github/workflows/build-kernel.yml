@@ -182,12 +182,18 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         git clone --recursive ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+        
+        # 进入内核源码根目录
         cd android-kernel
-        if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
-          echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
+        
+        # 只有在确实需要并且 localversion 存在时才读取
+        if [[ "${{ env.ADD_LOCALVERSION_TO_FILENAME }}" == "true" ]] && [ -f localversion ]; then
+         echo "LOCALVERSION=$(cat localversion)" >> $GITHUB_ENV
         else
-          echo "LOCALVERSION=" >> $GITHUB_ENV
+        echo "LOCALVERSION=" >> $GITHUB_ENV
         fi
+       
+        # 在内核源码目录里跑 SUSFS 的 setup 脚本
         curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
     - name: Download source boot image
