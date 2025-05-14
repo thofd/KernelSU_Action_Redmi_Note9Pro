@@ -188,6 +188,7 @@ jobs:
         else
           echo "LOCALVERSION=" >> $GITHUB_ENV
         fi
+        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
     - name: Download source boot image
       if: env.BUILD_BOOT_IMG == 'true'
