@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Build note9pro susfs Kernel
 on:
   workflow_dispatch:
 
@@ -78,10 +78,10 @@ jobs:
         docker-images: true
         swap-storage: false
 
-    - name: Set swap to 15G
+    - name: Set swap to 10G
       uses: pierotofy/set-swap-space@master
       with:
-        swap-size-gb: 15
+        swap-size-gb: 10
 
     - name: Setup build kernel environment
       run: |
