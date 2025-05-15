@@ -194,7 +194,7 @@ jobs:
         fi
        
         # 在内核源码目录里跑 SUSFS 的 setup 脚本
-        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+        # curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
     - name: Download source boot image
       if: env.BUILD_BOOT_IMG == 'true'
