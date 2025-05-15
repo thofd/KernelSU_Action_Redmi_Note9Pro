@@ -239,11 +239,14 @@ jobs:
         fi
         curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
-    - name: Patch KernelSU ksu.c to avoid MODULE_IMPORT_NS error
+    - name: Patch KernelSU ksu.c to avoid MODULE_IMPORT_NS and KernelSU SELinux current_sid redefinition error 
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         sed -i '/MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);/i #if defined(MODULE_IMPORT_NS)' drivers/kernelsu/ksu.c
         sed -i '/MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);/a #endif' drivers/kernelsu/ksu.c
+        sed -i '/static inline u32 current_sid(void)/i #ifndef current_sid' drivers/kernelsu/selinux/selinux.c
+        sed -i '/return current_security()->sid;/a #endif' drivers/kernelsu/selinux/selinux.c
+        
 
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
