@@ -244,6 +244,10 @@ jobs:
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         # 修复宏重复定义的问题
         find . -type f -name "*.h" -exec sed -i '/#define MODULE_IMPORT_NS(/d' {} +
+    - name: Patch KernelSU ksu.c to avoid MODULE_IMPORT_NS error
+      run: |
+        sed -i '/MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);/i #if defined(MODULE_IMPORT_NS)' drivers/kernelsu/ksu.c
+        sed -i '/MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);/a #endif' drivers/kernelsu/ksu.c
 
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
