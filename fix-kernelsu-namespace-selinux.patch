@@ -1,0 +1,38 @@
+From: OpenAI Patchbot <noreply@openai.com>
+Subject: Fix KernelSU compatibility: MODULE_IMPORT_NS + SELinux current_sid
+
+Fixes:
+- MODULE_IMPORT_NS declaration issue on older kernels
+- current_sid redefinition conflict with mainline SELinux
+- unterminated `#if` preprocessor directive
+
+---
+
+diff --git a/drivers/kernelsu/ksu.c b/drivers/kernelsu/ksu.c
+index 1234567..89abcde 100644
+--- a/drivers/kernelsu/ksu.c
++++ b/drivers/kernelsu/ksu.c
+@@ -94,7 +94,11 @@
+ 	__visible_for_testing__ = 1;
+ #endif
+
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+ MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
++#endif
+
+diff --git a/drivers/kernelsu/selinux/selinux.c b/drivers/kernelsu/selinux/selinux.c
+index 89abcde..fedcba9 100644
+--- a/drivers/kernelsu/selinux/selinux.c
++++ b/drivers/kernelsu/selinux/selinux.c
+@@ -73,7 +73,10 @@
+ #include "android_internal.h"
+
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) && \
+ 	!defined(SELINUX_HAS_CURRENT_SID_HELPER)
++
++#undef current_sid
+ static inline u32 current_sid(void)
+ {
+ 	return current_security()->sid;
+ }
++#endif
