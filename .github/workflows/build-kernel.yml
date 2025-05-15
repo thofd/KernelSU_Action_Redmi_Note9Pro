@@ -237,6 +237,7 @@ jobs:
         if [ ${{ env.DISABLE_CC_WERROR }} = true ]; then
             echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         fi
+        wget https://raw.githubusercontent.com/thofd/KernelSU_Action_Redmi_Note9Pro/N9p_susfs/fix-kernelsu-namespace-selinux.patch
         git apply fix-kernelsu-namespace-selinux.patch
         curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
