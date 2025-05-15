@@ -1,4 +1,4 @@
-name: Build note9pro susfs Kernel
+name: Build gauguin gpt Kernel
 on:
   workflow_dispatch:
 
@@ -96,8 +96,9 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         mkdir clang-aosp
-        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master-kernel-build-2022/clang-r450784e.tar.gz
-        tar -C clang-aosp/ -zxvf clang-r450784e.tar.gz
+        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/${{ env.CLANG_BRANCH }}/clang-${{ env.CLANG_VERSION }}.tar.gz
+        tar -C clang-aosp/ -zxvf clang-${{ env.CLANG_VERSION }}.tar.gz
+
     - name: Download Custom-Clang
       if: env.USE_CUSTOM_CLANG == 'true'
       run: |
@@ -182,19 +183,11 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         git clone --recursive ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
-        
-        # 进入内核源码根目录
-        cd android-kernel
-        
-        # 只有在确实需要并且 localversion 存在时才读取
-        if [[ "${{ env.ADD_LOCALVERSION_TO_FILENAME }}" == "true" ]] && [ -f localversion ]; then
-         echo "LOCALVERSION=$(cat localversion)" >> $GITHUB_ENV
+        if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
+          echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
         else
-        echo "LOCALVERSION=" >> $GITHUB_ENV
+          echo "LOCALVERSION=" >> $GITHUB_ENV
         fi
-       
-        # 在内核源码目录里跑 SUSFS 的 setup 脚本
-        # curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
     - name: Download source boot image
       if: env.BUILD_BOOT_IMG == 'true'
@@ -255,7 +248,6 @@ jobs:
     - name: Build kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        make O=out ARCH=arm64 vendor/gauguin_user_defconfig
         export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH
         export KBUILD_BUILD_HOST=Github-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
@@ -264,7 +256,6 @@ jobs:
           export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
         fi
         make -j$(nproc --all) CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} ${{ env.KERNEL_CONFIG }}
-        
         if [ ${{ env.ENABLE_CCACHE }} = true ]; then
             make -j$(nproc --all) CC="ccache clang" O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }}
         else
