@@ -1,0 +1,82 @@
+name: Build gauguin gpt Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    env:
+      CONFIG_ENV: config.env
+
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.KERNEL_SOURCE || 'thofd/neko_kernel_xiaomi_gauguin' }}
+          ref: ${{ vars.KERNEL_SOURCE_BRANCH || 'main' }}
+          path: kernel
+
+      - name: Load Environment Variables
+        run: |
+          echo "Loading env from ${{ env.CONFIG_ENV }}"
+          set -a
+          source ${{ env.CONFIG_ENV }}
+          set +a
+
+      - name: Set up AOSP Clang
+        uses: ryuichis/clang-action@v1
+        with:
+          branch: ${{ env.CLANG_BRANCH }}
+          version: ${{ env.CLANG_VERSION }}
+
+      - name: Set up GCC for arm64
+        if: env.ENABLE_GCC_ARM64 == 'true'
+        uses: ryuichis/gcc-arm64-action@v1
+        with:
+          use_custom: ${{ env.USE_CUSTOM_GCC_64 }}
+          custom_source: ${{ env.CUSTOM_GCC_64_SOURCE }}
+          custom_branch: ${{ env.CUSTOM_GCC_64_BRANCH }}
+
+      - name: Set up GCC for arm32
+        if: env.ENABLE_GCC_ARM32 == 'true'
+        uses: ryuichis/gcc-arm32-action@v1
+        with:
+          use_custom: ${{ env.USE_CUSTOM_GCC_32 }}
+          custom_source: ${{ env.CUSTOM_GCC_32_SOURCE }}
+          custom_branch: ${{ env.CUSTOM_GCC_32_BRANCH }}
+
+      - name: Set up Ccache
+        if: env.ENABLE_CCACHE == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      - name: Apply KernelSU Namespace Patch
+        run: |
+          if [ -f fix-kernelsu-namespace-selinux.patch ]; then
+            cd kernel
+            patch -p1 < ../fix-kernelsu-namespace-selinux.patch
+            cd ..
+          fi
+
+      - name: Build Kernel
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-stable
+          export ARCH=${ARCH}
+          export CLANG_TRIPLE=${CUSTOM_CMDS_CLANG_TRIPLE}
+          export LD=${EXTRA_CMDS_LD}
+          export CROSS_COMPILE=${CUSTOM_GCC_64_BIN}
+          export CROSS_COMPILE_ARM32=${CUSTOM_GCC_32_BIN}
+          make -C kernel O=out ${KERNEL_CONFIG}
+          make -C kernel O=out CC=clang LD=$LD CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 ${KERNEL_IMAGE_NAME}
+
+      - name: Upload Kernel Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Image
+          path: out/arch/arm64/boot/${{ env.KERNEL_IMAGE_NAME }}
