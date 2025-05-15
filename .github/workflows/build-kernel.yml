@@ -239,7 +239,6 @@ jobs:
         fi
         wget https://raw.githubusercontent.com/thofd/KernelSU_Action_Redmi_Note9Pro/N9p_susfs/fix-kernelsu-namespace-selinux.patch $GITHUB_WORKSPACE/kernel_workspace
         git apply fix-kernelsu-namespace-selinux.patch 
-        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
@@ -251,6 +250,7 @@ jobs:
     - name: Build kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
         export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH
         export KBUILD_BUILD_HOST=Github-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
