@@ -239,6 +239,12 @@ jobs:
         fi
         curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 
+    - name: Fix MODULE_IMPORT_NS redefinition error
+      run: |
+        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        # 修复宏重复定义的问题
+        find . -type f -name "*.h" -exec sed -i '/#define MODULE_IMPORT_NS(/d' {} +
+
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
       uses: hendrikmuhs/ccache-action@v1.2
