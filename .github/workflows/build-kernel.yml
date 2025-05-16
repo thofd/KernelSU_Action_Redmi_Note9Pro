@@ -10,7 +10,6 @@ jobs:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
-      KBUILD_CC_WRAPPER: ""
       
     steps:
     - uses: actions/checkout@v4
