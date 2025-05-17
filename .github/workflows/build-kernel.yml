@@ -248,20 +248,24 @@ jobs:
 
     - name: Build kernel
       run: |
-        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH
-        export KBUILD_BUILD_HOST=Github-Action
-        export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
-        if [ ! -z ${{ env.KSU_EXPECTED_SIZE }} ] && [ ! -z ${{ env.KSU_EXPECTED_HASH }} ]; then
-          export KSU_EXPECTED_SIZE=${{ env.KSU_EXPECTED_SIZE }}
-          export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
-        fi
-        make -j$(nproc --all) CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} ${{ env.KERNEL_CONFIG }}
-        if [ ${{ env.ENABLE_CCACHE }} = true ]; then
-            make -j$(nproc --all) CC="ccache clang" O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }}
-        else
-            make -j$(nproc --all) CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }}
-        fi
+         set -e          # 一出错就终止
+         cd "$GITHUB_WORKSPACE/kernel_workspace/android-kernel"
+
+         # === 环境变量 ===
+         export PATH="$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH"
+         export KBUILD_BUILD_HOST="Github-Action"
+         export KBUILD_BUILD_USER="$(echo thofd | tr A-Z a-z)"
+
+         # 如需校验 KernelSU 大小 / 哈希，在上游 step 设定这两个变量
+         if [ -n "$KSU_EXPECTED_SIZE" ] && [ -n "$KSU_EXPECTED_HASH" ]; then
+         export KSU_EXPECTED_SIZE
+         export KSU_EXPECTED_HASH
+         fi
+
+           # === 生成 defconfig ===
+            make -j"$(nproc --all)" CC=clang O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- LD=ld.lld CROSS_COMPILE="$GCC_64" CROSS_COMPILE_ARM32="$GCC_32" vendor/gauguin_user_defconfig
+            make -j"$(nproc --all)" V=1 LLVM=1 O=out
+
 
     - name: Check a kernel output files
       run: |
